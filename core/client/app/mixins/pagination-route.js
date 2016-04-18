@@ -4,6 +4,7 @@ import getRequestErrorMessage from 'ghost/utils/ajax';
 const {
     Mixin,
     RSVP,
+    computed,
     inject: {service}
 } = Ember;
 
@@ -17,7 +18,20 @@ export default Mixin.create({
 
     paginationModel: null,
     paginationSettings: null,
-    paginationMeta: null,
+
+    // add a hook so that routes/controllers can do something with the meta data
+    paginationMeta: computed({
+        get() {
+            return this._paginationMeta;
+        },
+        set(key, value) {
+            if (this.didReceivePaginationMeta) {
+                this.didReceivePaginationMeta(value);
+            }
+            this._paginationMeta = value;
+            return value;
+        }
+    }),
 
     init() {
         let paginationSettings = this.get('paginationSettings');
@@ -52,11 +66,15 @@ export default Mixin.create({
 
         paginationSettings.page = 1;
 
+        this.set('isLoading', true);
+
         return this.get('store').query(modelName, paginationSettings).then((results) => {
             this.set('paginationMeta', results.meta);
             return results;
         }, (response) => {
             this.reportLoadError(response);
+        }).finally(() => {
+            this.set('isLoading', false);
         });
     },
 
@@ -81,11 +99,12 @@ export default Mixin.create({
                 this.set('paginationSettings.page', nextPage);
 
                 return store.query(modelName, paginationSettings).then((results) => {
-                    this.set('isLoading', false);
                     this.set('paginationMeta', results.meta);
                     return results;
                 }, (response) => {
                     this.reportLoadError(response);
+                }).finally(() => {
+                    this.set('isLoading', false);
                 });
             } else {
                 return RSVP.resolve([]);
