@@ -60,5 +60,6 @@
     "paths": [
       "lib/asset-delivery"
     ]
-  }
+  },
+  "dependencies": {}
 }
